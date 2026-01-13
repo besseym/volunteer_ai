@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Volunteer Connect{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Page Header -->
+            <div class="page-header">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'volunteers:dashboard' %}">Dashboard</a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'volunteers:opportunity_list' %}">Opportunities</a>
+                        </li>
+                        <li class="breadcrumb-item active">{{ title }}</li>
+                    </ol>
+                </nav>
+                <h1><i class="bi bi-calendar-plus me-2"></i>{{ title }}</h1>
+                <p class="lead">
+                    {% if opportunity %}
+                    Update the details of this volunteer opportunity.
+                    {% else %}
+                    Create a new volunteer opportunity for people to sign up.
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- Form Card -->
+            <div class="card">
+                <div class="card-body p-4">
+                    <form method="post" id="opportunityForm" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Title -->
+                        <div class="mb-4">
+                            <label for="id_title" class="form-label">
+                                <i class="bi bi-type me-1"></i>Title <span class="text-danger">*</span>
+                            </label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.title.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Give your opportunity a clear, descriptive title.</div>
+                        </div>
+
+                        <!-- Category and Date Row -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="id_category" class="form-label">
+                                    <i class="bi bi-tag me-1"></i>Category <span class="text-danger">*</span>
+                                </label>
+                                {{ form.category }}
+                                {% if form.category.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.category.errors %}{{ error }}{% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_date" class="form-label">
+                                    <i class="bi bi-calendar3 me-1"></i>Date <span class="text-danger">*</span>
+                                </label>
+                                {{ form.date }}
+                                {% if form.date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.date.errors %}{{ error }}{% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-4">
+                            <label for="id_description" class="form-label">
+                                <i class="bi bi-text-paragraph me-1"></i>Description <span class="text-danger">*</span>
+                            </label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.description.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Provide details about the volunteer opportunity, requirements, and what volunteers can expect.</div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex gap-3 justify-content-end pt-3 border-top">
+                            <a href="{% url 'volunteers:opportunity_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="bi bi-check-circle me-1"></i>{{ button_text }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="text/babel">
+    // React component for form validation
+    function OpportunityFormValidator() {
+        const form = document.getElementById('opportunityForm');
+        const submitBtn = document.getElementById('submitBtn');
+
+        if (!form) return null;
+
+        form.addEventListener('submit', function(e) {
+            let isValid = true;
+            const requiredFields = ['title', 'category', 'date', 'description'];
+
+            // Clear previous validation states
+            form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            form.querySelectorAll('.validation-error').forEach(el => el.remove());
+
+            requiredFields.forEach(fieldName => {
+                const field = document.getElementById('id_' + fieldName);
+                if (field && !field.value.trim()) {
+                    isValid = false;
+                    field.classList.add('is-invalid');
+
+                    // Add error message
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'invalid-feedback d-block validation-error';
+                    errorDiv.textContent = 'This field is required.';
+                    field.parentNode.appendChild(errorDiv);
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                // Scroll to first error
+                const firstError = form.querySelector('.is-invalid');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstError.focus();
+                }
+            } else {
+                // Show loading state
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+            }
+        });
+
+        // Real-time validation
+        ['title', 'category', 'date', 'description'].forEach(fieldName => {
+            const field = document.getElementById('id_' + fieldName);
+            if (field) {
+                field.addEventListener('blur', function() {
+                    if (this.value.trim()) {
+                        this.classList.remove('is-invalid');
+                        this.classList.add('is-valid');
+                        const error = this.parentNode.querySelector('.validation-error');
+                        if (error) error.remove();
+                    }
+                });
+
+                field.addEventListener('input', function() {
+                    if (this.classList.contains('is-invalid') && this.value.trim()) {
+                        this.classList.remove('is-invalid');
+                        this.classList.add('is-valid');
+                        const error = this.parentNode.querySelector('.validation-error');
+                        if (error) error.remove();
+                    }
+                });
+            }
+        });
+
+        return null;
+    }
+
+    // Mount React component
+    const root = ReactDOM.createRoot(document.createElement('div'));
+    root.render(<OpportunityFormValidator />);
+</script>
+{% endblock %}

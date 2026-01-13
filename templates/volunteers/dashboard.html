@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Volunteer Connect{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1><i class="bi bi-speedometer2 me-2"></i>Dashboard</h1>
+        <p class="lead">Overview of volunteer opportunities and sign-ups</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card stats-card h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-value text-primary">{{ total_opportunities }}</div>
+                        <div class="stats-label">Total Opportunities</div>
+                    </div>
+                    <div class="stats-icon text-primary">
+                        <i class="bi bi-calendar-event"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card success h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-value text-success">{{ upcoming_opportunities }}</div>
+                        <div class="stats-label">Upcoming Events</div>
+                    </div>
+                    <div class="stats-icon text-success">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card warning h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-value text-warning">{{ total_volunteers }}</div>
+                        <div class="stats-label">Total Volunteers</div>
+                    </div>
+                    <div class="stats-icon text-warning">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Breakdown -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-tags me-2"></i>Categories Overview</h5>
+                </div>
+                <div class="card-body">
+                    {% if categories %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-center">Opportunities</th>
+                                    <th class="text-center">Volunteers</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in categories %}
+                                <tr>
+                                    <td>
+                                        <span class="category-badge {{ category.slug }}">{{ category.name }}</span>
+                                    </td>
+                                    <td class="text-center">{{ category.opportunity_count }}</td>
+                                    <td class="text-center">{{ category.volunteer_count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="bi bi-tags"></i></div>
+                        <h5>No categories yet</h5>
+                        <p class="text-muted">Categories will appear here once opportunities are added.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-person-plus me-2"></i>Recent Sign-ups</h5>
+                    <a href="{% url 'volunteers:volunteer_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_volunteers %}
+                    <div class="list-group list-group-flush">
+                        {% for volunteer in recent_volunteers %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div>
+                                <h6 class="mb-1">{{ volunteer.name }}</h6>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar-event me-1"></i>{{ volunteer.opportunity.title }}
+                                </small>
+                            </div>
+                            <span class="category-badge {{ volunteer.opportunity.category.slug }}">
+                                {{ volunteer.opportunity.category.name }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="bi bi-person-plus"></i></div>
+                        <h5>No volunteers yet</h5>
+                        <p class="text-muted">Volunteer sign-ups will appear here.</p>
+                        <a href="{% url 'volunteers:volunteer_signup' %}" class="btn btn-primary">
+                            <i class="bi bi-person-plus me-1"></i>Be the First!
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming Opportunities -->
+    <div class="card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Upcoming Opportunities</h5>
+            <div>
+                <a href="{% url 'volunteers:opportunity_create' %}" class="btn btn-sm btn-primary me-2">
+                    <i class="bi bi-plus-circle me-1"></i>Add New
+                </a>
+                <a href="{% url 'volunteers:opportunity_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if recent_opportunities %}
+            <div class="row g-4">
+                {% for opportunity in recent_opportunities %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card opportunity-card h-100 card-clickable"
+                         onclick="window.location='{% url 'volunteers:opportunity_detail' opportunity.pk %}'">
+                        <div class="opportunity-date">
+                            <div class="day">{{ opportunity.date|date:"d" }}</div>
+                            <div class="month">{{ opportunity.date|date:"M" }}</div>
+                        </div>
+                        <div class="card-body">
+                            <span class="category-badge {{ opportunity.category.slug }} mb-2">
+                                {{ opportunity.category.name }}
+                            </span>
+                            <h5 class="card-title mt-2">{{ opportunity.title }}</h5>
+                            <p class="card-text text-muted small">
+                                {{ opportunity.description|truncatewords:20 }}
+                            </p>
+                            <div class="volunteer-count">
+                                <i class="bi bi-people-fill"></i>
+                                {{ opportunity.volunteer_count }} volunteer{{ opportunity.volunteer_count|pluralize }}
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white border-top-0">
+                            <a href="{% url 'volunteers:volunteer_signup_for_opportunity' opportunity.pk %}"
+                               class="btn btn-primary btn-sm w-100"
+                               onclick="event.stopPropagation();">
+                                <i class="bi bi-person-plus me-1"></i>Sign Up
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon"><i class="bi bi-calendar-x"></i></div>
+                <h4>No upcoming opportunities</h4>
+                <p class="text-muted">Create your first volunteer opportunity to get started.</p>
+                <a href="{% url 'volunteers:opportunity_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>Add Opportunity
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

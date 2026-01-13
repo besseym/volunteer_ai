@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Volunteers - Volunteer Connect{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h1><i class="bi bi-people me-2"></i>Volunteers</h1>
+            <p class="lead mb-0">View all registered volunteers</p>
+        </div>
+        <a href="{% url 'volunteers:volunteer_signup' %}" class="btn btn-primary">
+            <i class="bi bi-person-plus me-1"></i>New Sign Up
+        </a>
+    </div>
+
+    {% if volunteers %}
+    <!-- Volunteers Table -->
+    <div class="table-modern">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Opportunity</th>
+                    <th>Category</th>
+                    <th>Date</th>
+                    <th>Signed Up</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for volunteer in volunteers %}
+                <tr class="fade-in">
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+                                 style="width: 36px; height: 36px; font-size: 0.9rem;">
+                                {{ volunteer.name|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <strong>{{ volunteer.name }}</strong>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ volunteer.age }}</td>
+                    <td>
+                        <a href="{% url 'volunteers:opportunity_detail' volunteer.opportunity.pk %}"
+                           class="text-decoration-none">
+                            {{ volunteer.opportunity.title }}
+                        </a>
+                    </td>
+                    <td>
+                        <span class="category-badge {{ volunteer.opportunity.category.slug }}">
+                            {{ volunteer.opportunity.category.name }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="date-display small">
+                            <i class="bi bi-calendar3"></i>
+                            {{ volunteer.opportunity.date|date:"M d, Y" }}
+                        </div>
+                    </td>
+                    <td>
+                        <small class="text-muted">{{ volunteer.created_at|date:"M d, Y" }}</small>
+                    </td>
+                    <td class="text-end">
+                        <div class="action-buttons justify-content-end">
+                            <button type="button" class="btn btn-outline-info btn-sm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#expertiseModal{{ volunteer.pk }}"
+                                    title="View expertise">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <a href="{% url 'volunteers:volunteer_delete' volunteer.pk %}"
+                               class="btn btn-outline-danger btn-sm" title="Remove">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Expertise Modal -->
+                <div class="modal fade" id="expertiseModal{{ volunteer.pk }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-stars me-2"></i>{{ volunteer.name }}'s Expertise
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>{{ volunteer.expertise }}</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Summary -->
+    <div class="mt-4 text-muted text-center">
+        <i class="bi bi-info-circle me-1"></i>
+        Showing {{ volunteers|length }} volunteer{{ volunteers|length|pluralize }}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="card">
+        <div class="card-body">
+            <div class="empty-state">
+                <div class="empty-icon"><i class="bi bi-people"></i></div>
+                <h4>No volunteers yet</h4>
+                <p class="text-muted">Once people sign up for opportunities, they will appear here.</p>
+                <a href="{% url 'volunteers:volunteer_signup' %}" class="btn btn-primary">
+                    <i class="bi bi-person-plus me-1"></i>Be the First Volunteer
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

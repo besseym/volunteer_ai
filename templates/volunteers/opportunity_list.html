@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Opportunities - Volunteer Connect{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h1><i class="bi bi-calendar-event me-2"></i>Volunteer Opportunities</h1>
+            <p class="lead mb-0">Browse and sign up for volunteer opportunities</p>
+        </div>
+        <a href="{% url 'volunteers:opportunity_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Add Opportunity
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-section">
+        <form method="get" id="filterForm">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    {{ form.search }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Category</label>
+                    {{ form.category }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">From Date</label>
+                    {{ form.date_from }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">To Date</label>
+                    {{ form.date_to }}
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            <i class="bi bi-search me-1"></i>Filter
+                        </button>
+                        <a href="{% url 'volunteers:opportunity_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- React-powered Opportunity List -->
+    <div id="opportunity-list-container">
+        {% if opportunities %}
+        <div class="row g-4">
+            {% for opportunity in opportunities %}
+            <div class="col-md-6 col-lg-4 fade-in">
+                <div class="card opportunity-card h-100">
+                    <div class="opportunity-date">
+                        <div class="day">{{ opportunity.date|date:"d" }}</div>
+                        <div class="month">{{ opportunity.date|date:"M" }}</div>
+                    </div>
+                    <div class="card-body">
+                        <span class="category-badge {{ opportunity.category.slug }} mb-2">
+                            {{ opportunity.category.name }}
+                        </span>
+                        <h5 class="card-title mt-2">{{ opportunity.title }}</h5>
+                        <p class="card-text text-muted small">
+                            {{ opportunity.description|truncatewords:25 }}
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="volunteer-count">
+                                <i class="bi bi-people-fill"></i>
+                                {{ opportunity.volunteer_count }} signed up
+                            </div>
+                            <div class="date-display small">
+                                <i class="bi bi-calendar3"></i>
+                                {{ opportunity.date|date:"M d, Y" }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'volunteers:volunteer_signup_for_opportunity' opportunity.pk %}"
+                               class="btn btn-primary btn-sm flex-grow-1">
+                                <i class="bi bi-person-plus me-1"></i>Sign Up
+                            </a>
+                            <a href="{% url 'volunteers:opportunity_detail' opportunity.pk %}"
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'volunteers:opportunity_edit' opportunity.pk %}"
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'volunteers:opportunity_delete' opportunity.pk %}"
+                               class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="card-body">
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="bi bi-calendar-x"></i></div>
+                    <h4>No opportunities found</h4>
+                    <p class="text-muted">
+                        {% if form.search.value or form.category.value or form.date_from.value or form.date_to.value %}
+                        Try adjusting your filters or search terms.
+                        {% else %}
+                        Be the first to create a volunteer opportunity!
+                        {% endif %}
+                    </p>
+                    {% if form.search.value or form.category.value or form.date_from.value or form.date_to.value %}
+                    <a href="{% url 'volunteers:opportunity_list' %}" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-x-circle me-1"></i>Clear Filters
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'volunteers:opportunity_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i>Add Opportunity
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="text/babel">
+    // React component for real-time search filtering
+    function OpportunityFilter() {
+        const [searchTerm, setSearchTerm] = React.useState('');
+
+        React.useEffect(() => {
+            const cards = document.querySelectorAll('.opportunity-card');
+            cards.forEach(card => {
+                const title = card.querySelector('.card-title').textContent.toLowerCase();
+                const description = card.querySelector('.card-text').textContent.toLowerCase();
+                const matches = title.includes(searchTerm.toLowerCase()) ||
+                               description.includes(searchTerm.toLowerCase());
+                card.closest('.col-md-6').style.display = matches ? '' : 'none';
+            });
+        }, [searchTerm]);
+
+        return null;
+    }
+
+    // Mount React component
+    const container = document.getElementById('opportunity-list-container');
+    if (container) {
+        // Add real-time search to existing search input
+        const searchInput = document.querySelector('input[name="search"]');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const cards = document.querySelectorAll('.opportunity-card');
+                cards.forEach(card => {
+                    const col = card.closest('.col-md-6');
+                    if (!col) return;
+                    const title = card.querySelector('.card-title')?.textContent?.toLowerCase() || '';
+                    const description = card.querySelector('.card-text')?.textContent?.toLowerCase() || '';
+                    const matches = title.includes(searchTerm) || description.includes(searchTerm);
+                    col.style.display = matches ? '' : 'none';
+                });
+            });
+        }
+    }
+</script>
+{% endblock %}
