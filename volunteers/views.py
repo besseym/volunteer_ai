@@ -1,5 +1,10 @@
+import csv
+import json
+from io import BytesIO
+from datetime import datetime
+
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -251,3 +256,200 @@ def api_dashboard_stats(request):
     }
 
     return JsonResponse(stats)
+
+
+# ============================================
+# Advanced Export System API Views
+# ============================================
+
+def _get_filtered_opportunities(request):
+    """Helper function to get filtered opportunities based on request params."""
+    opportunities = VolunteerOpportunity.objects.select_related('category').prefetch_related('volunteers')
+
+    # Category filtering (supports multiple categories)
+    categories = request.GET.getlist('categories[]') or request.GET.getlist('categories')
+    if categories:
+        opportunities = opportunities.filter(category_id__in=categories)
+
+    # Date range filtering
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    if date_from:
+        opportunities = opportunities.filter(date__gte=date_from)
+    if date_to:
+        opportunities = opportunities.filter(date__lte=date_to)
+
+    return opportunities
+
+
+def api_categories(request):
+    """API endpoint to get all categories for export filters."""
+    categories = Category.objects.annotate(
+        opportunity_count=Count('opportunities')
+    ).values('id', 'name', 'slug', 'opportunity_count')
+
+    return JsonResponse({'categories': list(categories)})
+
+
+def api_export_preview(request):
+    """API endpoint to preview export data with filters applied."""
+    opportunities = _get_filtered_opportunities(request)
+
+    data = [{
+        'id': opp.id,
+        'title': opp.title,
+        'category': opp.category.name,
+        'date': opp.date.strftime('%Y-%m-%d'),
+        'description': opp.description[:100] + '...' if len(opp.description) > 100 else opp.description,
+        'volunteer_count': opp.volunteer_count,
+    } for opp in opportunities]
+
+    return JsonResponse({
+        'opportunities': data,
+        'total_count': len(data),
+        'total_volunteers': sum(opp.volunteer_count for opp in opportunities),
+    })
+
+
+def export_csv(request):
+    """Export opportunities as CSV with filters."""
+    opportunities = _get_filtered_opportunities(request)
+    filename = request.GET.get('filename', 'volunteer_opportunities')
+
+    # Ensure .csv extension
+    if not filename.endswith('.csv'):
+        filename += '.csv'
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Title', 'Category', 'Date', 'Description', 'Number of Volunteers'])
+
+    for opp in opportunities:
+        writer.writerow([
+            opp.title,
+            opp.category.name,
+            opp.date.strftime('%Y-%m-%d'),
+            opp.description,
+            opp.volunteer_count,
+        ])
+
+    return response
+
+
+def export_json(request):
+    """Export opportunities as JSON with filters."""
+    opportunities = _get_filtered_opportunities(request)
+    filename = request.GET.get('filename', 'volunteer_opportunities')
+
+    # Ensure .json extension
+    if not filename.endswith('.json'):
+        filename += '.json'
+
+    data = {
+        'exported_at': datetime.now().isoformat(),
+        'total_records': opportunities.count(),
+        'opportunities': [{
+            'title': opp.title,
+            'category': opp.category.name,
+            'date': opp.date.strftime('%Y-%m-%d'),
+            'description': opp.description,
+            'volunteer_count': opp.volunteer_count,
+        } for opp in opportunities]
+    }
+
+    response = HttpResponse(
+        json.dumps(data, indent=2),
+        content_type='application/json'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    return response
+
+
+def export_pdf(request):
+    """Export opportunities as PDF with filters."""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter, landscape
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    except ImportError:
+        return JsonResponse({
+            'error': 'PDF export requires reportlab. Install with: pip install reportlab'
+        }, status=500)
+
+    opportunities = _get_filtered_opportunities(request)
+    filename = request.GET.get('filename', 'volunteer_opportunities')
+
+    # Ensure .pdf extension
+    if not filename.endswith('.pdf'):
+        filename += '.pdf'
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), topMargin=0.5*inch)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        spaceAfter=20,
+    )
+    elements.append(Paragraph('Volunteer Opportunities Export', title_style))
+    elements.append(Paragraph(f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}', styles['Normal']))
+    elements.append(Spacer(1, 20))
+
+    # Table data
+    table_data = [['Title', 'Category', 'Date', 'Volunteers', 'Description']]
+
+    for opp in opportunities:
+        desc = opp.description[:80] + '...' if len(opp.description) > 80 else opp.description
+        table_data.append([
+            opp.title,
+            opp.category.name,
+            opp.date.strftime('%Y-%m-%d'),
+            str(opp.volunteer_count),
+            desc,
+        ])
+
+    # Create table with styling
+    col_widths = [1.5*inch, 1.2*inch, 1*inch, 0.8*inch, 4.5*inch]
+    table = Table(table_data, colWidths=col_widths)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0d6efd')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('ALIGN', (3, 1), (3, -1), 'CENTER'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+
+    elements.append(table)
+
+    # Summary
+    elements.append(Spacer(1, 20))
+    summary = f'Total Records: {len(table_data) - 1} | Total Volunteers: {sum(opp.volunteer_count for opp in opportunities)}'
+    elements.append(Paragraph(summary, styles['Normal']))
+
+    doc.build(elements)
+
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    return response
