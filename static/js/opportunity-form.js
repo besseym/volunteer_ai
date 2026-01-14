@@ -3,11 +3,11 @@
  * Handles form validation for creating/editing volunteer opportunities
  */
 
-function OpportunityFormValidator() {
+document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('opportunityForm');
     const submitBtn = document.getElementById('submitBtn');
 
-    if (!form) return null;
+    if (!form) return;
 
     form.addEventListener('submit', function(e) {
         let isValid = true;
@@ -69,12 +69,4 @@ function OpportunityFormValidator() {
             });
         }
     });
-
-    return null;
-}
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    const root = ReactDOM.createRoot(document.createElement('div'));
-    root.render(<OpportunityFormValidator />);
 });

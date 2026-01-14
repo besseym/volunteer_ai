@@ -3,13 +3,13 @@
  * Handles form validation for volunteer registration
  */
 
-function VolunteerFormValidator() {
+document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('volunteerForm');
     const submitBtn = document.getElementById('submitBtn');
     const ageInput = document.getElementById('id_age');
     const opportunitySelect = document.getElementById('id_opportunity');
 
-    if (!form) return null;
+    if (!form) return;
 
     // Age validation with visual feedback
     if (ageInput) {
@@ -112,12 +112,4 @@ function VolunteerFormValidator() {
             });
         }
     });
-
-    return null;
-}
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    const root = ReactDOM.createRoot(document.createElement('div'));
-    root.render(<VolunteerFormValidator />);
 });
