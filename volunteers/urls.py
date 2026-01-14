@@ -23,4 +23,7 @@ urlpatterns = [
     # API endpoints for React components
     path('api/opportunities/', views.api_opportunities, name='api_opportunities'),
     path('api/dashboard-stats/', views.api_dashboard_stats, name='api_dashboard_stats'),
+
+    # Data export
+    path('export/opportunities/', views.export_opportunities_csv, name='export_opportunities_csv'),
 ]

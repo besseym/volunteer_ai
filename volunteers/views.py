@@ -1,5 +1,6 @@
+import csv
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -251,3 +252,24 @@ def api_dashboard_stats(request):
     }
 
     return JsonResponse(stats)
+
+
+def export_opportunities_csv(request):
+    """Export all volunteer opportunities as CSV."""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="volunteer_opportunities.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Title', 'Category', 'Date', 'Description', 'Number of Volunteers'])
+
+    opportunities = VolunteerOpportunity.objects.select_related('category').prefetch_related('volunteers')
+    for opp in opportunities:
+        writer.writerow([
+            opp.title,
+            opp.category.name,
+            opp.date.strftime('%Y-%m-%d'),
+            opp.description,
+            opp.volunteer_count,
+        ])
+
+    return response
